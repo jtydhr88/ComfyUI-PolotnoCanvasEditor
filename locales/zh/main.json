@@ -1,0 +1,20 @@
+{
+  "dialog": {
+    "title": "Polotno 画布编辑器",
+    "save": "保存到 ComfyUI",
+    "cancel": "取消",
+    "saveSuccess": "图片保存成功",
+    "saveFailed": "保存图片失败"
+  },
+  "editor": {
+    "loading": "正在加载编辑器...",
+    "noImage": "未加载图片。从侧边栏添加元素。",
+    "exportFailed": "导出图片失败"
+  },
+  "settings": {
+    "apiKey": "Polotno API 密钥",
+    "apiKeyTooltip": "您的 Polotno API 密钥。从 https://polotno.com 获取",
+    "defaultWidth": "默认画布宽度",
+    "defaultHeight": "默认画布高度"
+  }
+}

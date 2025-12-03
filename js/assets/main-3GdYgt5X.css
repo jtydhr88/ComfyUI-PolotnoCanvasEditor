@@ -1,0 +1,23 @@
+
+.polotno-loading[data-v-89c21cb5] {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  color: #888;
+  z-index: 1;
+}
+.polotno-iframe[data-v-89c21cb5] {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* Global style for PrimeVue Dialog - not scoped */
+.p-dialog-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 0 !important;
+}

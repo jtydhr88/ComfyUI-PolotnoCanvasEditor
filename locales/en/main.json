@@ -1,0 +1,20 @@
+{
+  "dialog": {
+    "title": "Polotno Canvas Editor",
+    "save": "Save to ComfyUI",
+    "cancel": "Cancel",
+    "saveSuccess": "Image saved successfully",
+    "saveFailed": "Failed to save image"
+  },
+  "editor": {
+    "loading": "Loading editor...",
+    "noImage": "No image loaded. Add elements from the side panel.",
+    "exportFailed": "Failed to export image"
+  },
+  "settings": {
+    "apiKey": "Polotno API Key",
+    "apiKeyTooltip": "Your Polotno API key. Get one from https://polotno.com",
+    "defaultWidth": "Default Canvas Width",
+    "defaultHeight": "Default Canvas Height"
+  }
+}

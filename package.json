@@ -1,0 +1,25 @@
+{
+  "name": "comfyui-polotno-canvas-editor",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "build:polotno": "cd polotno-src && npm run build",
+    "build:all": "npm run build:polotno && npm run build",
+    "install:all": "npm install && cd polotno-src && npm install",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "vue": "^3.5.13",
+    "vue-i18n": "^9.14.0",
+    "primevue": "^4.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vue-tsc": "^2.1.10"
+  }
+}
