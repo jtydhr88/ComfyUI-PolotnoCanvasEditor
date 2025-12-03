@@ -52,22 +52,18 @@ const currentNode = ref<ImageNode | null>(null)
 const editorReady = ref(false)
 const polotnoEditorRef = ref<InstanceType<typeof PolotnoEditor> | null>(null)
 
-// Settings
 const apiKey = ref('')
 const canvasWidth = ref(1024)
 const canvasHeight = ref(1024)
 const theme = ref<'light' | 'dark'>('dark')
 
-// Save callback
 let saveCallback: ((dataUrl: string, node: ImageNode | null) => Promise<void>) | null = null
 
 onMounted(() => {
-  // Load settings
   apiKey.value = app.ui?.settings?.getSettingValue('Comfy.PolotnoCanvasEditor.ApiKey') || ''
   canvasWidth.value = app.ui?.settings?.getSettingValue('Comfy.PolotnoCanvasEditor.DefaultWidth') || 1024
   canvasHeight.value = app.ui?.settings?.getSettingValue('Comfy.PolotnoCanvasEditor.DefaultHeight') || 1024
 
-  // Get current ComfyUI theme
   const colorPalette = app.ui?.settings?.getSettingValue('Comfy.ColorPalette') || ''
   theme.value = colorPalette.includes('light') ? 'light' : 'dark'
 })
@@ -127,7 +123,6 @@ defineExpose({
 </script>
 
 <style>
-/* Global style for PrimeVue Dialog - not scoped */
 .p-dialog-content {
   flex: 1;
   overflow: hidden;
