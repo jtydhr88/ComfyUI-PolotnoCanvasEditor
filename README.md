@@ -1,5 +1,7 @@
 # ComfyUI-PolotnoCanvasEditor
 
+**[中文](README_CN.md) | English**
+
 A ComfyUI extension that integrates [Polotno](https://polotno.com) Canvas Editor for advanced image editing and design directly within ComfyUI.
 
 ![img.png](docs/img.png)
