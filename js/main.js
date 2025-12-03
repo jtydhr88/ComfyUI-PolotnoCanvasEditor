@@ -16825,7 +16825,8 @@ const _sfc_main$1 = /* @__PURE__ */ defineComponent({
     apiKey: {},
     initialImageUrl: {},
     width: {},
-    height: {}
+    height: {},
+    theme: {}
   },
   emits: ["ready", "save"],
   setup(__props, { expose: __expose, emit: __emit }) {
@@ -16842,6 +16843,7 @@ const _sfc_main$1 = /* @__PURE__ */ defineComponent({
       }
       params.set("width", String(props.width || 1024));
       params.set("height", String(props.height || 1024));
+      params.set("theme", props.theme || "dark");
       return `/polotno?${params.toString()}`;
     });
     function handleMessage(event) {
@@ -16947,7 +16949,7 @@ const _export_sfc = (sfc, props) => {
   }
   return target;
 };
-const PolotnoEditor = /* @__PURE__ */ _export_sfc(_sfc_main$1, [["__scopeId", "data-v-89c21cb5"]]);
+const PolotnoEditor = /* @__PURE__ */ _export_sfc(_sfc_main$1, [["__scopeId", "data-v-9ca3e01a"]]);
 const _sfc_main = /* @__PURE__ */ defineComponent({
   __name: "Root",
   setup(__props, { expose: __expose }) {
@@ -16959,12 +16961,15 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     const apiKey = ref("");
     const canvasWidth = ref(1024);
     const canvasHeight = ref(1024);
+    const theme = ref("dark");
     let saveCallback = null;
     onMounted(() => {
-      var _a, _b, _c, _d, _e2, _f;
+      var _a, _b, _c, _d, _e2, _f, _g, _h;
       apiKey.value = ((_b = (_a = app.ui) == null ? void 0 : _a.settings) == null ? void 0 : _b.getSettingValue("Comfy.PolotnoCanvasEditor.ApiKey")) || "";
       canvasWidth.value = ((_d = (_c = app.ui) == null ? void 0 : _c.settings) == null ? void 0 : _d.getSettingValue("Comfy.PolotnoCanvasEditor.DefaultWidth")) || 1024;
       canvasHeight.value = ((_f = (_e2 = app.ui) == null ? void 0 : _e2.settings) == null ? void 0 : _f.getSettingValue("Comfy.PolotnoCanvasEditor.DefaultHeight")) || 1024;
+      const colorPalette = ((_h = (_g = app.ui) == null ? void 0 : _g.settings) == null ? void 0 : _h.getSettingValue("Comfy.ColorPalette")) || "";
+      theme.value = colorPalette.includes("light") ? "light" : "dark";
     });
     function open() {
       visible.value = true;
@@ -17031,9 +17036,10 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
             "initial-image-url": currentImageUrl.value,
             width: canvasWidth.value,
             height: canvasHeight.value,
+            theme: theme.value,
             onReady: handleEditorReady,
             onSave: handleSave
-          }, null, 8, ["api-key", "initial-image-url", "width", "height"])) : createCommentVNode("", true)
+          }, null, 8, ["api-key", "initial-image-url", "width", "height", "theme"])) : createCommentVNode("", true)
         ]),
         _: 1
       }, 8, ["visible", "header"]);
@@ -17130,7 +17136,7 @@ function ensurePolotnoInstance() {
   return rootInstance;
 }
 async function handleSaveToComfyUI(imageDataUrl, node) {
-  var _a;
+  var _a, _b, _c;
   try {
     const response = await fetch(imageDataUrl);
     const blob = await response.blob();
@@ -17150,7 +17156,7 @@ async function handleSaveToComfyUI(imageDataUrl, node) {
     }
     const result = await uploadResponse.json();
     if (node) {
-      const widgetValue = result.subfolder ? `${result.subfolder}/${result.name}` : result.name;
+      const widgetValue = result.subfolder ? `${result.subfolder}/${result.name} [input]` : `${result.name} [input]`;
       node.images = [
         {
           filename: result.name,
@@ -17160,15 +17166,31 @@ async function handleSaveToComfyUI(imageDataUrl, node) {
       ];
       const imageWidget = (_a = node.widgets) == null ? void 0 : _a.find((w2) => w2.name === "image");
       if (imageWidget) {
+        if (((_b = imageWidget.options) == null ? void 0 : _b.values) && !imageWidget.options.values.includes(widgetValue)) {
+          imageWidget.options.values.push(widgetValue);
+        }
         imageWidget.value = widgetValue;
+        const anyNode = node;
+        if (anyNode.widgets_values && anyNode.widgets) {
+          const widgetIndex = anyNode.widgets.findIndex((w2) => w2.name === "image");
+          if (widgetIndex >= 0) {
+            anyNode.widgets_values[widgetIndex] = widgetValue;
+          }
+        }
+        const propsNode = node;
+        if (propsNode.properties) {
+          propsNode.properties["image"] = widgetValue;
+        }
+        (_c = imageWidget.callback) == null ? void 0 : _c.call(imageWidget, widgetValue);
       }
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.src = imageDataUrl;
       await new Promise((resolve2) => {
         img.onload = resolve2;
       });
       node.imgs = [img];
-      app.graph.setDirtyCanvas(true);
+      app.graph.setDirtyCanvas(true, true);
     }
     console.log("[Polotno] Image saved successfully:", result);
   } catch (error) {

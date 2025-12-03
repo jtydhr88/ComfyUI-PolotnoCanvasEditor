@@ -21,6 +21,7 @@ const props = defineProps<{
   initialImageUrl?: string | null
   width?: number
   height?: number
+  theme?: 'light' | 'dark'
 }>()
 
 const emit = defineEmits<{
@@ -31,9 +32,11 @@ const emit = defineEmits<{
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 const ready = ref(false)
 
+// Pending operations queue (for operations requested before iframe is ready)
 let pendingImageUrl: string | null = null
 let exportResolve: ((dataUrl: string | null) => void) | null = null
 
+// Build iframe URL with params
 const iframeSrc = computed(() => {
   const params = new URLSearchParams()
   if (props.apiKey) {
@@ -41,9 +44,11 @@ const iframeSrc = computed(() => {
   }
   params.set('width', String(props.width || 1024))
   params.set('height', String(props.height || 1024))
+  params.set('theme', props.theme || 'dark')
   return `/polotno?${params.toString()}`
 })
 
+// Handle messages from iframe
 function handleMessage(event: MessageEvent) {
   const { type, dataUrl, message, width, height } = event.data || {}
 
@@ -59,10 +64,12 @@ function handleMessage(event: MessageEvent) {
       break
 
     case 'exportResult':
+      // Handle programmatic export request
       if (exportResolve) {
         exportResolve(dataUrl)
         exportResolve = null
       } else {
+        // Handle save from Polotno toolbar button
         emit('save', dataUrl)
       }
       break
@@ -85,12 +92,14 @@ function handleIframeLoad() {
   // iframe loaded, waiting for 'ready' message from app
 }
 
+// Send message to iframe
 function postMessage(message: object) {
   if (iframeRef.value?.contentWindow) {
     iframeRef.value.contentWindow.postMessage(message, '*')
   }
 }
 
+// Load image to canvas
 function loadImageToCanvas(imageUrl: string) {
   if (!ready.value) {
     pendingImageUrl = imageUrl
@@ -99,6 +108,7 @@ function loadImageToCanvas(imageUrl: string) {
   postMessage({ type: 'loadImage', data: { url: imageUrl } })
 }
 
+// Export image as data URL
 function exportImage(): Promise<string | null> {
   return new Promise((resolve) => {
     if (!ready.value) {
@@ -108,6 +118,7 @@ function exportImage(): Promise<string | null> {
     exportResolve = resolve
     postMessage({ type: 'exportImage' })
 
+    // Timeout after 10 seconds
     setTimeout(() => {
       if (exportResolve) {
         exportResolve(null)
@@ -117,10 +128,12 @@ function exportImage(): Promise<string | null> {
   })
 }
 
+// Clear canvas
 function clear() {
   postMessage({ type: 'clear' })
 }
 
+// Set canvas size
 function setSize(width: number, height: number) {
   postMessage({ type: 'setSize', data: { width, height } })
 }
@@ -128,6 +141,7 @@ function setSize(width: number, height: number) {
 onMounted(() => {
   window.addEventListener('message', handleMessage)
 
+  // If initial image URL provided, queue it
   if (props.initialImageUrl) {
     pendingImageUrl = props.initialImageUrl
   }

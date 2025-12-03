@@ -170,8 +170,8 @@ async function handleSaveToComfyUI(imageDataUrl: string, node: ImageNode): Promi
     // Update node with new image reference
     if (node) {
       const widgetValue = result.subfolder
-        ? `${result.subfolder}/${result.name}`
-        : result.name
+        ? `${result.subfolder}/${result.name} [input]`
+        : `${result.name} [input]`
 
       // Update node.images
       node.images = [
@@ -182,22 +182,53 @@ async function handleSaveToComfyUI(imageDataUrl: string, node: ImageNode): Promi
         }
       ]
 
-      // Update image widget if exists
-      const imageWidget = node.widgets?.find((w) => w.name === 'image')
+      // Find and update image widget
+      const imageWidget = node.widgets?.find((w) => w.name === 'image') as {
+        name: string
+        value: string
+        options?: { values?: string[] }
+        callback?: (value: string) => void
+      } | undefined
+
       if (imageWidget) {
+        // Add to widget options if not exists
+        if (imageWidget.options?.values && !imageWidget.options.values.includes(widgetValue)) {
+          imageWidget.options.values.push(widgetValue)
+        }
+
+        // Update widget value
         imageWidget.value = widgetValue
+
+        // Update node.widgets_values array
+        const anyNode = node as { widgets?: unknown[]; widgets_values?: unknown[] }
+        if (anyNode.widgets_values && anyNode.widgets) {
+          const widgetIndex = (anyNode.widgets as { name: string }[]).findIndex(w => w.name === 'image')
+          if (widgetIndex >= 0) {
+            anyNode.widgets_values[widgetIndex] = widgetValue
+          }
+        }
+
+        // Update node properties
+        const propsNode = node as { properties?: Record<string, unknown> }
+        if (propsNode.properties) {
+          propsNode.properties['image'] = widgetValue
+        }
+
+        // Trigger widget callback to update UI
+        imageWidget.callback?.(widgetValue)
       }
 
-      // Refresh node preview
+      // Refresh node preview image
       const img = new Image()
+      img.crossOrigin = 'anonymous'
       img.src = imageDataUrl
       await new Promise((resolve) => {
         img.onload = resolve
       })
       node.imgs = [img]
 
-      // Mark graph as dirty
-      app.graph.setDirtyCanvas(true)
+      // Mark graph as dirty to trigger re-render
+      app.graph.setDirtyCanvas(true, true)
     }
 
     console.log('[Polotno] Image saved successfully:', result)

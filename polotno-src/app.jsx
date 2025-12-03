@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 
+// Polotno imports
 import { PolotnoContainer, SidePanelWrap, WorkspaceWrap } from 'polotno'
 import { Toolbar } from 'polotno/toolbar/toolbar'
 import { ZoomButtons } from 'polotno/toolbar/zoom-buttons'
@@ -10,23 +11,30 @@ import { createStore } from 'polotno/model/store'
 import { DownloadButton } from 'polotno/toolbar/download-button'
 import { Button } from '@blueprintjs/core'
 
+// Import Blueprint CSS (required for Polotno UI)
 import '@blueprintjs/core/lib/css/blueprint.css'
 
+// Get params from URL
 const urlParams = new URLSearchParams(window.location.search)
 const apiKey = urlParams.get('apiKey') || 'nFA5H9elEytDyPyvKL7T'
+const initialTheme = urlParams.get('theme') || 'dark' // default to dark for ComfyUI
 
+// Create store
 const store = createStore({
   key: apiKey,
   showCredit: !urlParams.get('apiKey')
 })
 
+// Set initial size
 const width = parseInt(urlParams.get('width')) || 1024
 const height = parseInt(urlParams.get('height')) || 1024
 store.setSize(width, height)
 store.addPage()
 
+// Export store for external access
 window.polotnoStore = store
 
+// Custom ActionControls with Save to ComfyUI button
 const ActionControls = ({ store }) => {
   const [saving, setSaving] = useState(false)
 
@@ -61,8 +69,12 @@ const ActionControls = ({ store }) => {
   )
 }
 
+// App component
 function App() {
+  const [theme, setTheme] = useState(initialTheme)
+
   useEffect(() => {
+    // Listen for messages from parent window
     const handleMessage = async (event) => {
       const { type, data } = event.data || {}
 
@@ -79,17 +91,30 @@ function App() {
         case 'setSize':
           store.setSize(data.width, data.height)
           break
+        case 'setTheme':
+          setTheme(data.theme)
+          break
       }
     }
 
     window.addEventListener('message', handleMessage)
 
+    // Notify parent that we're ready
     window.parent.postMessage({ type: 'ready' }, '*')
 
     return () => {
       window.removeEventListener('message', handleMessage)
     }
   }, [])
+
+  // Apply theme class to body
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.body.classList.add('bp5-dark')
+    } else {
+      document.body.classList.remove('bp5-dark')
+    }
+  }, [theme])
 
   return (
     <PolotnoContainer style={{ width: '100%', height: '100vh' }}>
@@ -105,10 +130,12 @@ function App() {
   )
 }
 
+// Load image to canvas
 async function loadImage(url) {
   if (!url) return
 
   try {
+    // Load image to get dimensions
     const img = new Image()
     img.crossOrigin = 'anonymous'
 
@@ -118,14 +145,17 @@ async function loadImage(url) {
       img.src = url
     })
 
+    // Resize canvas to match image
     store.setSize(img.width, img.height)
 
+    // Clear existing elements
     const page = store.pages[0]
     if (page) {
       page.children.forEach((child) => {
         page.removeElement(child.id)
       })
 
+      // Add image element
       page.addElement({
         type: 'image',
         src: url,
@@ -143,6 +173,7 @@ async function loadImage(url) {
   }
 }
 
+// Export canvas as image
 async function exportImage() {
   try {
     const dataUrl = await store.toDataURL({
@@ -156,6 +187,7 @@ async function exportImage() {
   }
 }
 
+// Clear canvas
 function clearCanvas() {
   const page = store.pages[0]
   if (page) {
@@ -165,5 +197,6 @@ function clearCanvas() {
   }
 }
 
+// Render app
 const root = ReactDOM.createRoot(document.getElementById('root'))
 root.render(<App />)
