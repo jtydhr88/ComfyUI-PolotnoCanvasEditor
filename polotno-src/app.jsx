@@ -16,7 +16,7 @@ import '@blueprintjs/core/lib/css/blueprint.css'
 
 // Get params from URL
 const urlParams = new URLSearchParams(window.location.search)
-const apiKey = urlParams.get('apiKey') || 'nFA5H9elEytDyPyvKL7T'
+const apiKey = urlParams.get('apiKey') || '123'
 const initialTheme = urlParams.get('theme') || 'dark' // default to dark for ComfyUI
 
 // Create store
