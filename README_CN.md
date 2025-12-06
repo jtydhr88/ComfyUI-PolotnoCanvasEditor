@@ -36,7 +36,7 @@
 
 ### API 密钥（可选）
 
-Polotno 商业使用需要 API 密钥。对于开源和非营利项目，可以使用随机密钥（会显示 Polotno 品牌水印）。
+Polotno 商业使用需要 API 密钥。对于开源和非营利项目，可以使用随机密钥（在settings里随便填什么都可以）。
 
 设置 API 密钥的方法：
 1. 进入 ComfyUI 的 **Settings（设置）**
