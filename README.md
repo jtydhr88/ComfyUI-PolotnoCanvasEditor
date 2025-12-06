@@ -36,7 +36,7 @@ Search for "Polotno Canvas Editor" in the ComfyUI Manager and install.
 
 ### API Key (Optional)
 
-Polotno requires an API key for commercial use. For open-source and non-profit projects, you can use it with a random key (with Polotno branding visible).
+Polotno requires an API key for commercial use. For open-source and non-profit projects, you can use it with a random key (type anything in the settings).
 
 To set your API key:
 1. Go to **Settings** in ComfyUI
