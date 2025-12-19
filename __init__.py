@@ -24,12 +24,20 @@ POLOTNO_UI_PATH = Path(__file__).parent / 'polotno-ui'
 
 @routes.get('/polotno')
 async def serve_polotno_index(request):
-    """Serve the main Polotno UI index.html"""
+    """Serve the main Polotno UI index.html with no-cache headers"""
     index_path = POLOTNO_UI_PATH / 'index.html'
     if index_path.exists():
-        return web.FileResponse(index_path)
+        # Set no-cache headers so browser always checks for updates
+        response = web.FileResponse(index_path)
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     else:
-        return web.Response(text="Polotno UI not found. Please build polotno-src first: cd polotno-src && npm install && npm run build", status=404)
+        return web.Response(
+            text="Polotno UI not found. Please build polotno-src first: cd polotno-src && npm install && npm run build",
+            status=404)
+
 
 @routes.get('/polotno/{path:.*}')
 async def serve_polotno_static(request):
