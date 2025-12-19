@@ -16823,7 +16823,7 @@ const _sfc_main$1 = /* @__PURE__ */ defineComponent({
   __name: "PolotnoEditor",
   props: {
     apiKey: {},
-    initialImageUrl: {},
+    initialImageUrls: {},
     width: {},
     height: {},
     theme: {}
@@ -16834,7 +16834,7 @@ const _sfc_main$1 = /* @__PURE__ */ defineComponent({
     const emit2 = __emit;
     const iframeRef = ref(null);
     const ready = ref(false);
-    let pendingImageUrl = null;
+    let pendingImageUrls = [];
     let exportResolve = null;
     const iframeSrc = computed(() => {
       const params = new URLSearchParams();
@@ -16847,14 +16847,14 @@ const _sfc_main$1 = /* @__PURE__ */ defineComponent({
       return `/polotno?${params.toString()}`;
     });
     function handleMessage(event) {
-      const { type, dataUrl, message, width, height } = event.data || {};
+      const { type, dataUrl, message, width, height, count } = event.data || {};
       switch (type) {
         case "ready":
           ready.value = true;
           emit2("ready");
-          if (pendingImageUrl) {
-            loadImageToCanvas(pendingImageUrl);
-            pendingImageUrl = null;
+          if (pendingImageUrls.length > 0) {
+            loadImagesToCanvas(pendingImageUrls);
+            pendingImageUrls = [];
           }
           break;
         case "exportResult":
@@ -16867,6 +16867,9 @@ const _sfc_main$1 = /* @__PURE__ */ defineComponent({
           break;
         case "imageLoaded":
           console.log("[Polotno] Image loaded:", width, "x", height);
+          break;
+        case "imagesLoaded":
+          console.log("[Polotno] Loaded", count, "images as layers");
           break;
         case "error":
           console.error("[Polotno] Error:", message);
@@ -16883,12 +16886,15 @@ const _sfc_main$1 = /* @__PURE__ */ defineComponent({
         iframeRef.value.contentWindow.postMessage(message, "*");
       }
     }
-    function loadImageToCanvas(imageUrl) {
+    function loadImagesToCanvas(imageUrls) {
       if (!ready.value) {
-        pendingImageUrl = imageUrl;
+        pendingImageUrls = imageUrls;
         return;
       }
-      postMessage({ type: "loadImage", data: { url: imageUrl } });
+      postMessage({ type: "loadImages", data: { urls: imageUrls } });
+    }
+    function loadImageToCanvas(imageUrl) {
+      loadImagesToCanvas([imageUrl]);
     }
     function exportImage() {
       return new Promise((resolve2) => {
@@ -16914,8 +16920,8 @@ const _sfc_main$1 = /* @__PURE__ */ defineComponent({
     }
     onMounted(() => {
       window.addEventListener("message", handleMessage);
-      if (props.initialImageUrl) {
-        pendingImageUrl = props.initialImageUrl;
+      if (props.initialImageUrls && props.initialImageUrls.length > 0) {
+        pendingImageUrls = [...props.initialImageUrls];
       }
     });
     onUnmounted(() => {
@@ -16924,6 +16930,7 @@ const _sfc_main$1 = /* @__PURE__ */ defineComponent({
     __expose({
       exportImage,
       loadImageToCanvas,
+      loadImagesToCanvas,
       clear,
       setSize
     });
@@ -16949,12 +16956,12 @@ const _export_sfc = (sfc, props) => {
   }
   return target;
 };
-const PolotnoEditor = /* @__PURE__ */ _export_sfc(_sfc_main$1, [["__scopeId", "data-v-9ca3e01a"]]);
+const PolotnoEditor = /* @__PURE__ */ _export_sfc(_sfc_main$1, [["__scopeId", "data-v-c6fcd93e"]]);
 const _sfc_main = /* @__PURE__ */ defineComponent({
   __name: "Root",
   setup(__props, { expose: __expose }) {
     const visible = ref(false);
-    const currentImageUrl = ref(null);
+    const currentImageUrls = ref([]);
     const currentNode = ref(null);
     const editorReady = ref(false);
     const polotnoEditorRef = ref(null);
@@ -16977,13 +16984,13 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     function close2() {
       visible.value = false;
     }
-    function loadImage(imageUrl, node) {
-      currentImageUrl.value = imageUrl;
+    function loadImages(imageUrls, node) {
+      currentImageUrls.value = imageUrls;
       currentNode.value = node || null;
       visible.value = true;
     }
     function openNew(node) {
-      currentImageUrl.value = null;
+      currentImageUrls.value = [];
       currentNode.value = node || null;
       visible.value = true;
     }
@@ -16995,7 +17002,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     }
     function handleClose() {
       editorReady.value = false;
-      currentImageUrl.value = null;
+      currentImageUrls.value = [];
       currentNode.value = null;
     }
     async function handleSave(dataUrl) {
@@ -17010,7 +17017,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     __expose({
       open,
       close: close2,
-      loadImage,
+      loadImages,
       openNew,
       setSaveCallback
     });
@@ -17033,13 +17040,13 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
             ref_key: "polotnoEditorRef",
             ref: polotnoEditorRef,
             "api-key": apiKey.value,
-            "initial-image-url": currentImageUrl.value,
+            "initial-image-urls": currentImageUrls.value,
             width: canvasWidth.value,
             height: canvasHeight.value,
             theme: theme.value,
             onReady: handleEditorReady,
             onSave: handleSave
-          }, null, 8, ["api-key", "initial-image-url", "width", "height", "theme"])) : createCommentVNode("", true)
+          }, null, 8, ["api-key", "initial-image-urls", "width", "height", "theme"])) : createCommentVNode("", true)
         ]),
         _: 1
       }, 8, ["visible", "header"]);
@@ -17071,37 +17078,29 @@ const i18n = createI18n({
 let mountContainer = null;
 let vueApp = null;
 let rootInstance = null;
-const IMAGE_NODES = [
-  "LoadImage",
-  "PreviewImage",
-  "SaveImage",
-  "LoadImageMask",
-  "ImageScale",
-  "ImageInvert",
-  "ImageBatch",
-  "ImagePadForOutpaint"
-];
+const IMAGE_NODES = ["LoadImage", "PreviewImage", "SaveImage"];
 function isImageNode(node) {
   var _a;
   if (!node || typeof node !== "object") return false;
   const n = node;
   return n.previewMediaType === "image" || n.previewMediaType !== "video" && !!((_a = n.imgs) == null ? void 0 : _a.length);
 }
-function getImageUrlFromNode(node) {
-  var _a, _b, _c, _d;
-  if ((_a = node.images) == null ? void 0 : _a[0]) {
-    const img = node.images[0];
-    const params = new URLSearchParams({
-      filename: img.filename,
-      type: img.type || "input",
-      subfolder: img.subfolder || ""
+function getImageUrlsFromNode(node) {
+  var _a, _b, _c;
+  if ((_a = node.images) == null ? void 0 : _a.length) {
+    return node.images.map((img) => {
+      const params = new URLSearchParams({
+        filename: img.filename,
+        type: img.type || "input",
+        subfolder: img.subfolder || ""
+      });
+      return api.apiURL(`/view?${params.toString()}`);
     });
-    return api.apiURL(`/view?${params.toString()}`);
   }
-  if ((_c = (_b = node.imgs) == null ? void 0 : _b[0]) == null ? void 0 : _c.src) {
-    return node.imgs[0].src;
+  if ((_b = node.imgs) == null ? void 0 : _b.length) {
+    return node.imgs.map((img) => img.src).filter(Boolean);
   }
-  const imageWidget = (_d = node.widgets) == null ? void 0 : _d.find((w2) => w2.name === "image");
+  const imageWidget = (_c = node.widgets) == null ? void 0 : _c.find((w2) => w2.name === "image");
   if (imageWidget == null ? void 0 : imageWidget.value) {
     const value = imageWidget.value;
     const match = value.match(/^(.+?)(?:\s*\[(\w+)\])?$/);
@@ -17111,15 +17110,11 @@ function getImageUrlFromNode(node) {
       const lastSlash = fullPath.lastIndexOf("/");
       const subfolder = lastSlash > -1 ? fullPath.substring(0, lastSlash) : "";
       const filename = lastSlash > -1 ? fullPath.substring(lastSlash + 1) : fullPath;
-      const params = new URLSearchParams({
-        filename,
-        type,
-        subfolder
-      });
-      return api.apiURL(`/view?${params.toString()}`);
+      const params = new URLSearchParams({ filename, type, subfolder });
+      return [api.apiURL(`/view?${params.toString()}`)];
     }
   }
-  return null;
+  return [];
 }
 function ensurePolotnoInstance() {
   if (rootInstance) {
@@ -17157,13 +17152,11 @@ async function handleSaveToComfyUI(imageDataUrl, node) {
     const result = await uploadResponse.json();
     if (node) {
       const widgetValue = result.subfolder ? `${result.subfolder}/${result.name} [input]` : `${result.name} [input]`;
-      node.images = [
-        {
-          filename: result.name,
-          subfolder: result.subfolder || "",
-          type: "input"
-        }
-      ];
+      node.images = [{
+        filename: result.name,
+        subfolder: result.subfolder || "",
+        type: "input"
+      }];
       const imageWidget = (_a = node.widgets) == null ? void 0 : _a.find((w2) => w2.name === "image");
       if (imageWidget) {
         if (((_b = imageWidget.options) == null ? void 0 : _b.values) && !imageWidget.options.values.includes(widgetValue)) {
@@ -17201,9 +17194,9 @@ async function handleSaveToComfyUI(imageDataUrl, node) {
 function openPolotnoEditor(node) {
   const instance = ensurePolotnoInstance();
   if (node) {
-    const imageUrl = getImageUrlFromNode(node);
-    if (imageUrl) {
-      instance.loadImage(imageUrl, node);
+    const imageUrls = getImageUrlsFromNode(node);
+    if (imageUrls.length > 0) {
+      instance.loadImages(imageUrls, node);
     } else {
       instance.openNew(node);
     }
@@ -17259,11 +17252,12 @@ app.registerExtension({
         return [];
       }
     }
+    const imageUrls = getImageUrlsFromNode(node);
+    const count = imageUrls.length;
     return [
       null,
-      // Separator
       {
-        content: "Open in Polotno Canvas Editor",
+        content: count > 1 ? `Open in Polotno (${count} as layers)` : "Open in Polotno Canvas Editor",
         callback: () => {
           openPolotnoEditor(node);
         }

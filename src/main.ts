@@ -36,11 +36,7 @@ let mountContainer: HTMLDivElement | null = null
 let vueApp: VueApp | null = null
 let rootInstance: InstanceType<typeof Root> | null = null
 
-const IMAGE_NODES = [
-  'LoadImage',
-  'PreviewImage',
-  'SaveImage'
-]
+const IMAGE_NODES = ['LoadImage', 'PreviewImage', 'SaveImage']
 
 interface ImageNode {
   id: number
@@ -66,19 +62,20 @@ function isImageNode(node: unknown): node is ImageNode {
   )
 }
 
-function getImageUrlFromNode(node: ImageNode): string | null {
-  if (node.images?.[0]) {
-    const img = node.images[0]
-    const params = new URLSearchParams({
-      filename: img.filename,
-      type: img.type || 'input',
-      subfolder: img.subfolder || ''
+function getImageUrlsFromNode(node: ImageNode): string[] {
+  if (node.images?.length) {
+    return node.images.map((img) => {
+      const params = new URLSearchParams({
+        filename: img.filename,
+        type: img.type || 'input',
+        subfolder: img.subfolder || ''
+      })
+      return api.apiURL(`/view?${params.toString()}`)
     })
-    return api.apiURL(`/view?${params.toString()}`)
   }
 
-  if (node.imgs?.[0]?.src) {
-    return node.imgs[0].src
+  if (node.imgs?.length) {
+    return node.imgs.map((img) => img.src).filter(Boolean)
   }
 
   const imageWidget = node.widgets?.find((w) => w.name === 'image')
@@ -91,17 +88,12 @@ function getImageUrlFromNode(node: ImageNode): string | null {
       const lastSlash = fullPath.lastIndexOf('/')
       const subfolder = lastSlash > -1 ? fullPath.substring(0, lastSlash) : ''
       const filename = lastSlash > -1 ? fullPath.substring(lastSlash + 1) : fullPath
-
-      const params = new URLSearchParams({
-        filename,
-        type,
-        subfolder
-      })
-      return api.apiURL(`/view?${params.toString()}`)
+      const params = new URLSearchParams({ filename, type, subfolder })
+      return [api.apiURL(`/view?${params.toString()}`)]
     }
   }
 
-  return null
+  return []
 }
 
 function ensurePolotnoInstance(): InstanceType<typeof Root> {
@@ -118,7 +110,6 @@ function ensurePolotnoInstance(): InstanceType<typeof Root> {
   vueApp.use(PrimeVue)
 
   rootInstance = vueApp.mount(mountContainer) as InstanceType<typeof Root>
-
   rootInstance.setSaveCallback(handleSaveToComfyUI)
 
   return rootInstance
@@ -154,31 +145,25 @@ async function handleSaveToComfyUI(imageDataUrl: string, node: ImageNode): Promi
         ? `${result.subfolder}/${result.name} [input]`
         : `${result.name} [input]`
 
-      node.images = [
-        {
-          filename: result.name,
-          subfolder: result.subfolder || '',
-          type: 'input'
-        }
-      ]
+      node.images = [{
+        filename: result.name,
+        subfolder: result.subfolder || '',
+        type: 'input'
+      }]
 
-      const imageWidget = node.widgets?.find((w) => w.name === 'image') as {
-        name: string
-        value: string
-        options?: { values?: string[] }
-        callback?: (value: string) => void
-      } | undefined
+      const imageWidget = node.widgets?.find((w) => w.name === 'image') as
+        | { name: string; value: string; options?: { values?: string[] }; callback?: (value: string) => void }
+        | undefined
 
       if (imageWidget) {
         if (imageWidget.options?.values && !imageWidget.options.values.includes(widgetValue)) {
           imageWidget.options.values.push(widgetValue)
         }
-
         imageWidget.value = widgetValue
 
         const anyNode = node as { widgets?: unknown[]; widgets_values?: unknown[] }
         if (anyNode.widgets_values && anyNode.widgets) {
-          const widgetIndex = (anyNode.widgets as { name: string }[]).findIndex(w => w.name === 'image')
+          const widgetIndex = (anyNode.widgets as { name: string }[]).findIndex((w) => w.name === 'image')
           if (widgetIndex >= 0) {
             anyNode.widgets_values[widgetIndex] = widgetValue
           }
@@ -195,9 +180,7 @@ async function handleSaveToComfyUI(imageDataUrl: string, node: ImageNode): Promi
       const img = new Image()
       img.crossOrigin = 'anonymous'
       img.src = imageDataUrl
-      await new Promise((resolve) => {
-        img.onload = resolve
-      })
+      await new Promise((resolve) => { img.onload = resolve })
       node.imgs = [img]
 
       app.graph.setDirtyCanvas(true, true)
@@ -214,9 +197,9 @@ function openPolotnoEditor(node?: ImageNode): void {
   const instance = ensurePolotnoInstance()
 
   if (node) {
-    const imageUrl = getImageUrlFromNode(node)
-    if (imageUrl) {
-      instance.loadImage(imageUrl, node)
+    const imageUrls = getImageUrlsFromNode(node)
+    if (imageUrls.length > 0) {
+      instance.loadImages(imageUrls, node)
     } else {
       instance.openNew(node)
     }
@@ -233,8 +216,7 @@ app.registerExtension({
       id: 'Comfy.PolotnoCanvasEditor.ApiKey',
       category: ['Polotno Canvas Editor', 'API Key'],
       name: 'Polotno API Key',
-      tooltip:
-        'Your Polotno API key. Get one from https://polotno.com. Leave empty for open-source/non-profit use.',
+      tooltip: 'Your Polotno API key. Get one from https://polotno.com. Leave empty for open-source/non-profit use.',
       type: 'text',
       defaultValue: ''
     },
@@ -258,14 +240,12 @@ app.registerExtension({
 
   setup() {
     const { ComfyButton } = window.comfyAPI.button
-
     const button = new ComfyButton({
       icon: 'palette',
       tooltip: 'Polotno Canvas Editor',
       content: 'Polotno Canvas',
       action: () => openPolotnoEditor()
     })
-
     app.menu?.settingsGroup.append(button)
   },
 
@@ -279,10 +259,13 @@ app.registerExtension({
       }
     }
 
+    const imageUrls = getImageUrlsFromNode(node as ImageNode)
+    const count = imageUrls.length
+
     return [
       null,
       {
-        content: 'Open in Polotno Canvas Editor',
+        content: count > 1 ? `Open in Polotno (${count} as layers)` : 'Open in Polotno Canvas Editor',
         callback: () => {
           openPolotnoEditor(node as ImageNode)
         }

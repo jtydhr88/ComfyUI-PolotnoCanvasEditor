@@ -14,7 +14,7 @@
       v-if="visible"
       ref="polotnoEditorRef"
       :api-key="apiKey"
-      :initial-image-url="currentImageUrl"
+      :initial-image-urls="currentImageUrls"
       :width="canvasWidth"
       :height="canvasHeight"
       :theme="theme"
@@ -47,7 +47,7 @@ interface ImageNode {
 }
 
 const visible = ref(false)
-const currentImageUrl = ref<string | null>(null)
+const currentImageUrls = ref<string[]>([])
 const currentNode = ref<ImageNode | null>(null)
 const editorReady = ref(false)
 const polotnoEditorRef = ref<InstanceType<typeof PolotnoEditor> | null>(null)
@@ -76,14 +76,14 @@ function close(): void {
   visible.value = false
 }
 
-function loadImage(imageUrl: string, node?: ImageNode): void {
-  currentImageUrl.value = imageUrl
+function loadImages(imageUrls: string[], node?: ImageNode): void {
+  currentImageUrls.value = imageUrls
   currentNode.value = node || null
   visible.value = true
 }
 
 function openNew(node?: ImageNode): void {
-  currentImageUrl.value = null
+  currentImageUrls.value = []
   currentNode.value = node || null
   visible.value = true
 }
@@ -98,7 +98,7 @@ function handleEditorReady(): void {
 
 function handleClose(): void {
   editorReady.value = false
-  currentImageUrl.value = null
+  currentImageUrls.value = []
   currentNode.value = null
 }
 
@@ -116,7 +116,7 @@ async function handleSave(dataUrl: string): Promise<void> {
 defineExpose({
   open,
   close,
-  loadImage,
+  loadImages,
   openNew,
   setSaveCallback
 })

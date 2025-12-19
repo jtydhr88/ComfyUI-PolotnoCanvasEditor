@@ -17,7 +17,7 @@ import '@blueprintjs/core/lib/css/blueprint.css'
 // Get params from URL
 const urlParams = new URLSearchParams(window.location.search)
 const apiKey = urlParams.get('apiKey') || '123'
-const initialTheme = urlParams.get('theme') || 'dark' // default to dark for ComfyUI
+const initialTheme = urlParams.get('theme') || 'dark'
 
 // Create store
 const store = createStore({
@@ -74,13 +74,15 @@ function App() {
   const [theme, setTheme] = useState(initialTheme)
 
   useEffect(() => {
-    // Listen for messages from parent window
     const handleMessage = async (event) => {
       const { type, data } = event.data || {}
 
       switch (type) {
         case 'loadImage':
-          await loadImage(data.url)
+          await loadImages([data.url])
+          break
+        case 'loadImages':
+          await loadImages(data.urls)
           break
         case 'exportImage':
           await exportImage()
@@ -98,8 +100,6 @@ function App() {
     }
 
     window.addEventListener('message', handleMessage)
-
-    // Notify parent that we're ready
     window.parent.postMessage({ type: 'ready' }, '*')
 
     return () => {
@@ -107,7 +107,6 @@ function App() {
     }
   }, [])
 
-  // Apply theme class to body
   useEffect(() => {
     if (theme === 'dark') {
       document.body.classList.add('bp5-dark')
@@ -130,46 +129,57 @@ function App() {
   )
 }
 
-// Load image to canvas
-async function loadImage(url) {
-  if (!url) return
-
-  try {
-    // Load image to get dimensions
+// Helper: Load image element
+async function loadImageElement(url) {
+  return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = url
+  })
+}
 
-    await new Promise((resolve, reject) => {
-      img.onload = resolve
-      img.onerror = reject
-      img.src = url
-    })
+// Load multiple images as layers
+async function loadImages(urls) {
+  if (!urls || urls.length === 0) return
 
-    // Resize canvas to match image
-    store.setSize(img.width, img.height)
+  try {
+    const page = store.pages[0]
+    if (!page) return
 
     // Clear existing elements
-    const page = store.pages[0]
-    if (page) {
-      page.children.forEach((child) => {
-        page.removeElement(child.id)
-      })
+    page.children.forEach((child) => {
+      page.removeElement(child.id)
+    })
 
-      // Add image element
+    // Load first image to set canvas size
+    const firstImg = await loadImageElement(urls[0])
+    store.setSize(firstImg.width, firstImg.height)
+
+    // Add all images as layers
+    for (let i = 0; i < urls.length; i++) {
+      const img = i === 0 ? firstImg : await loadImageElement(urls[i])
       page.addElement({
         type: 'image',
-        src: url,
+        src: urls[i],
         x: 0,
         y: 0,
         width: img.width,
-        height: img.height
+        height: img.height,
+        name: urls.length > 1 ? `Batch ${i + 1}` : 'Image'
       })
     }
 
-    window.parent.postMessage({ type: 'imageLoaded', width: img.width, height: img.height }, '*')
+    window.parent.postMessage({
+      type: urls.length > 1 ? 'imagesLoaded' : 'imageLoaded',
+      count: urls.length,
+      width: firstImg.width,
+      height: firstImg.height
+    }, '*')
   } catch (error) {
-    console.error('[Polotno] Failed to load image:', error)
-    window.parent.postMessage({ type: 'error', message: 'Failed to load image' }, '*')
+    console.error('[Polotno] Failed to load images:', error)
+    window.parent.postMessage({ type: 'error', message: 'Failed to load images' }, '*')
   }
 }
 
