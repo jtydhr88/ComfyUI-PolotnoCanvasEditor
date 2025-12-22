@@ -5,6 +5,9 @@ import Root from './Root.vue'
 import en from '../locales/en/main.json'
 import zh from '../locales/zh/main.json'
 
+// PSD export
+import { writePsd } from 'ag-psd'
+
 // @ts-ignore - ComfyUI external module
 import { app } from '../../../scripts/app.js'
 // @ts-ignore - ComfyUI external module
@@ -94,6 +97,81 @@ function getImageUrlsFromNode(node: ImageNode): string[] {
   }
 
   return []
+}
+
+
+async function loadImageElement(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = url
+  })
+}
+
+async function exportNodeAsPSD(node: ImageNode): Promise<void> {
+  const imageUrls = getImageUrlsFromNode(node)
+  if (imageUrls.length === 0) {
+    console.error('[Polotno] No images found in node')
+    return
+  }
+
+  try {
+    const firstImg = await loadImageElement(imageUrls[0])
+    const psdWidth = firstImg.width
+    const psdHeight = firstImg.height
+
+    const compositeCanvas = document.createElement('canvas')
+    compositeCanvas.width = psdWidth
+    compositeCanvas.height = psdHeight
+    const compositeCtx = compositeCanvas.getContext('2d')!
+
+    const layers = []
+
+    for (let i = 0; i < imageUrls.length; i++) {
+      const img = i === 0 ? firstImg : await loadImageElement(imageUrls[i])
+      const layerCanvas = document.createElement('canvas')
+      layerCanvas.width = psdWidth
+      layerCanvas.height = psdHeight
+      const layerCtx = layerCanvas.getContext('2d')!
+
+      layerCtx.drawImage(img, 0, 0, psdWidth, psdHeight)
+      compositeCtx.drawImage(img, 0, 0, psdWidth, psdHeight)
+
+      layers.push({
+        name: imageUrls.length > 1 ? `Layer ${i + 1}` : 'Image',
+        canvas: layerCanvas,
+        left: 0,
+        top: 0,
+        right: psdWidth,
+        bottom: psdHeight
+      })
+    }
+
+    const psd = {
+      width: psdWidth,
+      height: psdHeight,
+      canvas: compositeCanvas,
+      children: layers
+    }
+
+    const psdBuffer = writePsd(psd)
+
+    const blob = new Blob([psdBuffer], { type: 'application/octet-stream' })
+    const downloadUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = `comfyui-export-${Date.now()}.psd`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(downloadUrl)
+
+    console.log('[Polotno] PSD exported successfully')
+  } catch (error) {
+    console.error('[Polotno] Failed to export PSD:', error)
+  }
 }
 
 function ensurePolotnoInstance(): InstanceType<typeof Root> {
@@ -269,9 +347,15 @@ app.registerExtension({
         callback: () => {
           openPolotnoEditor(node as ImageNode)
         }
+      },
+      {
+        content: count > 1 ? `Export as PSD (${count} layers)` : 'Export as PSD',
+        callback: () => {
+          exportNodeAsPSD(node as ImageNode)
+        }
       }
     ]
   }
 })
 
-export { openPolotnoEditor }
+export { openPolotnoEditor, exportNodeAsPSD }

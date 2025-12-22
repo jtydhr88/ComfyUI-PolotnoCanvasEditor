@@ -34,6 +34,7 @@ const ready = ref(false)
 
 let pendingImageUrls: string[] = []
 let exportResolve: ((dataUrl: string | null) => void) | null = null
+let exportPSDResolve: ((data: ArrayBuffer | null) => void) | null = null
 
 const iframeSrc = computed(() => {
   const params = new URLSearchParams()
@@ -47,7 +48,7 @@ const iframeSrc = computed(() => {
 })
 
 function handleMessage(event: MessageEvent) {
-  const { type, dataUrl, message, width, height, count } = event.data || {}
+  const { type, dataUrl, data, message, width, height, count } = event.data || {}
 
   switch (type) {
     case 'ready':
@@ -68,6 +69,18 @@ function handleMessage(event: MessageEvent) {
       }
       break
 
+    case 'exportPSDResult':
+      if (exportPSDResolve) {
+        const binary = atob(data)
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i)
+        }
+        exportPSDResolve(bytes.buffer)
+        exportPSDResolve = null
+      }
+      break
+
     case 'imageLoaded':
       console.log('[Polotno] Image loaded:', width, 'x', height)
       break
@@ -81,6 +94,10 @@ function handleMessage(event: MessageEvent) {
       if (exportResolve) {
         exportResolve(null)
         exportResolve = null
+      }
+      if (exportPSDResolve) {
+        exportPSDResolve(null)
+        exportPSDResolve = null
       }
       break
   }
@@ -122,6 +139,24 @@ function exportImage(): Promise<string | null> {
   })
 }
 
+function exportPSD(): Promise<ArrayBuffer | null> {
+  return new Promise((resolve) => {
+    if (!ready.value) {
+      resolve(null)
+      return
+    }
+    exportPSDResolve = resolve
+    postMessage({ type: 'exportPSD' })
+
+    setTimeout(() => {
+      if (exportPSDResolve) {
+        exportPSDResolve(null)
+        exportPSDResolve = null
+      }
+    }, 30000)
+  })
+}
+
 function clear() {
   postMessage({ type: 'clear' })
 }
@@ -144,6 +179,7 @@ onUnmounted(() => {
 
 defineExpose({
   exportImage,
+  exportPSD,
   loadImageToCanvas,
   loadImagesToCanvas,
   clear,
